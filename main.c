@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
   configure_ctx(ctx);
 
   int listen_fd = create_listen_socket(port);
+  printf("Socket listening on port %d\n", port);
 
   run_event_loop(ctx, listen_fd);
 }

@@ -16,7 +16,7 @@ $(BINARY): $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf bin
+	rm -rf *.o
 
 fmt:
 	clang-format -i $(SRCS) $(HEADERS)
