@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <openssl/err.h>
 
 int connect_to_peer(const char* host, int port, SSL_CTX* ctx, Peer* out_peer) {
   int                sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,11 +17,13 @@ int connect_to_peer(const char* host, int port, SSL_CTX* ctx, Peer* out_peer) {
   inet_pton(AF_INET, host, &addr.sin_addr);
 
   if (connect(sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    perror("connect");
     return -1;
   }
 
   SSL* ssl = create_tls_connection(ctx, sock_fd);
   if (SSL_connect(ssl) <= 0) { // initiates the handshake right here. This is incredible
+    ERR_print_errors_fp(stderr);
     close(sock_fd);
     return -2;
   }
@@ -38,6 +41,7 @@ Peer* accept_peer(int listen_fd, SSL_CTX* ctx) {
   socklen_t          fd_len = sizeof(addr);
 
   if ((client_fd = accept(listen_fd, (struct sockaddr*)&addr, &fd_len)) < 0) {
+    printf("Failed to accept socket connection\n");
     return NULL;
   };
 
@@ -45,6 +49,7 @@ Peer* accept_peer(int listen_fd, SSL_CTX* ctx) {
   if (SSL_accept(ssl) <= 0) {
     SSL_free(ssl);
     close(client_fd);
+    printf("Failed to accept TLS handshake\n");
     return NULL;
   }
 

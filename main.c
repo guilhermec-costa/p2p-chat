@@ -1,8 +1,11 @@
 #include "io.h"
+#include "peer.h"
 #include "tls.h"
 
 #include <netinet/in.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -30,12 +33,38 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  int      port = atoi(argv[1]);
-  SSL_CTX* ctx  = create_tls_ctx();
-  configure_ctx(ctx);
+  if (argc == 2) {
+    int port      = atoi(argv[1]);
+    int listen_fd = create_listen_socket(port);
+    printf("Waiting connections on port %d...\n", port);
+    SSL_CTX* ctx = create_tls_ctx();
+    configure_ctx(ctx);
+    run_event_loop(ctx, listen_fd);
+    fprintf(stderr, "Loop principal foi encerrado. Isso não deveria acontecer.\n");
+  } else if (argc == 4 && strcmp(argv[1], "connect") == 0) {
+    printf("Client mode initiated\n");
+    const char* host = argv[2];
+    int         port = atoi(argv[3]);
+    Peer        p;
+    SSL_CTX* ctx = create_tls_ctx();
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
+    if (connect_to_peer(host, port, ctx, &p) == 0) {
+      printf("Connected to %s:%d\n", host, port);
+      char msg[512];
+      while (fgets(msg, sizeof(msg), stdin)) {
+        SSL_write(p.ssl, msg, strlen(msg));
+      }
+    } else {
+      ERR_print_errors_fp(stderr);
+      fprintf(stderr, "Failed to connect.\n");
+    }
+  } else {
+    fprintf(stderr, "Use:\n");
+    fprintf(stderr, "  %s <port>              # server\n", argv[0]);
+    fprintf(stderr, "  %s connect <ip> <porta> # client\n", argv[0]);
+    return 1;
+  }
 
-  int listen_fd = create_listen_socket(port);
-  printf("Socket listening on port %d\n", port);
-
-  run_event_loop(ctx, listen_fd);
+  printf("failed\n");
+  return 0;
 }

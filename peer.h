@@ -8,3 +8,4 @@ typedef struct {
 } Peer;
 
 Peer* accept_peer(int listen_fd, SSL_CTX* ctx);
+int   connect_to_peer(const char* host, int port, SSL_CTX* ctx, Peer* out_peer);
